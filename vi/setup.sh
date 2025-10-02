@@ -1,15 +1,18 @@
 #!/bin/bash
 
 # =================================================================
-# == SCRIPT TỰ ĐỘNG HÓA ONESHOT CHO UBUNTU (PHIÊN BẢN CUỐI)    ==
+# == SCRIPT TỰ ĐỘNG HÓA ONESHOT CHO UBUNTU (PHIÊN BẢN CHỐNG TƯƠNG TÁC) ==
 # =================================================================
 
 # Dừng script ngay lập tức nếu có lỗi xảy ra
 set -e
 
+# Thiết lập để APT không hiển thị các cửa sổ hỏi tương tác
+export DEBIAN_FRONTEND=noninteractive
+APT_OPTIONS="-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
+
 echo "Bắt đầu quá trình cài đặt và thiết lập môi trường tự động..."
-echo "Quá trình này sẽ bao gồm: Tạo swap, cập nhật hệ thống, cài đặt các gói cần thiết, Node.js, Yarn, Docker và tải mã nguồn."
-echo "Vui lòng đợi..."
+echo "Quá trình này sẽ chạy hoàn toàn không tương tác."
 echo ""
 
 # --- CÁC PHẦN 1-7 (TỰ ĐỘNG HÓA CÀI ĐẶT) ---
@@ -24,18 +27,19 @@ echo "--- HOÀN TẤT PHẦN 1 ---" && echo ""
 
 # PHẦN 2: CẬP NHẬT HỆ THỐNG
 echo "PHẦN 2: Cập nhật hệ thống..."
-sudo apt-get update && sudo apt-get upgrade -y
+sudo apt-get update
+sudo apt-get $APT_OPTIONS upgrade
 echo "--- HOÀN TẤT PHẦN 2 ---" && echo ""
 
 # PHẦN 3: CÀI ĐẶT GÓI CƠ BẢN
 echo "PHẦN 3: Cài đặt các gói cơ bản..."
-sudo apt-get install -y screen curl iptables build-essential git wget lz4 jq make gcc nano automake autoconf tmux htop nvme-cli libgbm1 pkg-config libssl-dev libleveldb-dev tar clang bsdmainutils ncdu unzip python3 python3-pip python3-venv python3-dev
+sudo apt-get $APT_OPTIONS install screen curl iptables build-essential git wget lz4 jq make gcc nano automake autoconf tmux htop nvme-cli libgbm1 pkg-config libssl-dev libleveldb-dev tar clang bsdmainutils ncdu unzip python3 python3-pip python3-venv python3-dev
 echo "--- HOÀN TẤT PHẦN 3 ---" && echo ""
 
 # PHẦN 4: CÀI ĐẶT NODE.JS
 echo "PHẦN 4: Cài đặt Node.js v22..."
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt-get install -y nodejs
+sudo apt-get $APT_OPTIONS install nodejs
 echo "--- HOÀN TẤT PHẦN 4 ---" && echo ""
 
 # PHẦN 5: CÀI ĐẶT YARN BERRY
@@ -55,13 +59,13 @@ echo "--- HOÀN TẤT PHẦN 6 ---" && echo ""
 echo "PHẦN 7: Cài đặt Docker Engine..."
 sudo apt-get update
 for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do sudo apt-get remove -y $pkg || true; done
-sudo apt-get install -y ca-certificates curl gnupg
+sudo apt-get $APT_OPTIONS install ca-certificates curl gnupg
 sudo install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/sources.list.d/docker.list > /dev/null
 sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo apt-get $APT_OPTIONS install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 sudo groupadd -f docker
 sudo usermod -aG docker $USER
 echo "--- HOÀN TẤT PHẦN 7 ---" && echo ""
@@ -76,7 +80,6 @@ echo "Chuẩn bị môi trường làm việc đa nhiệm với 'screen'..."
 screen -S swarm -dm
 
 # Tạo cửa sổ 0, đặt tên là 'docker-app' và chạy lệnh docker compose
-# Lưu ý: Cần source ~/.bashrc để nhận PATH của yarn và quyền docker mới
 COMMAND_TO_RUN="source ~/.bashrc && cd ~/rl-swarm && docker compose run --rm --build -Pit swarm-cpu"
 screen -S swarm -p 0 -X title "docker-app"
 screen -S swarm -p 0 -X stuff "$COMMAND_TO_RUN\n"
